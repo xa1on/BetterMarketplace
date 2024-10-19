@@ -14,7 +14,7 @@ class fbscraper():
         chrome_options.add_argument("--headless")
         self.browser = webdriver.Chrome(options = chrome_options)
 
-        self.conn = psycopg2.connect(host = "localhost", dbname = "postgres", port = 5432)
+        self.conn = psycopg2.connect(host = "localhost", dbname = "postgres", port = 5432) # also fix this database, this is eugenes on his local computer
         self.cur = self.conn.cursor()
         self.db = "cars"
 
@@ -91,7 +91,9 @@ class fbscraper():
         data = soup.get_text()
         data = ' '.join(data.splitlines())
 
-        miles_pattern = r"Driven ([\d,]+).+miles" #all of these regex patterns are specific to the case of cars, we need to write different patterns for cars/regular items
+        #all of these regex patterns are specific to the case of cars, we need to write different patterns for cars/regular items
+        # we can apply these patterns to any text description of page, so maybe make 2 main sets of patterns, cars/not cars
+        miles_pattern = r"Driven ([\d,]+).+miles" 
         transmission_pattern = r"([A-Z][a-z]+) transmission"
         color_pattern = r"color: ([a-zA-Z]+)"
         location_pattern = r"Location(\S+)[, ]"
@@ -152,4 +154,5 @@ if __name__ == "__main__":
     scraper.search("brz", "sanjose") # searches for brz's within san jose and commits to DB
 
 # comments from eugene: this is extremely hard coded for cars on fb marketplace
-#
+# need to add images, you can probably pull the image links from the facebook data so we don't need to store images in the storage
+# also look into singlestore so we don't have to deal with this garbage
