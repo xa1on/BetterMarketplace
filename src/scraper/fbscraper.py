@@ -6,6 +6,12 @@ import time
 from bs4 import BeautifulSoup
 import re
 import psycopg2
+from os import environ
+from dotenv import load_dotenv
+
+load_dotenv()
+
+sqlpass = environ["sqlpass"]
 
 class fbscraper():
 
@@ -14,7 +20,7 @@ class fbscraper():
         chrome_options.add_argument("--headless")
         self.browser = webdriver.Chrome(options = chrome_options)
 
-        self.conn = psycopg2.connect(host = "localhost", dbname = "postgres", port = 5432) # also fix this database, this is eugenes on his local computer
+        self.conn = psycopg2.connect(host = "localhost", dbname = "postgres", port = 5432, password = sqlpass, user = "postgres") # also fix this database, this is eugenes on his local computer
         self.cur = self.conn.cursor()
         self.db = "cars"
 
