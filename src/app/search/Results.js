@@ -5,8 +5,7 @@ export default function Results(props) {
 
     return (
         <div>
-            Hello {product}
-            <Card header={product} price={10} source="reddit"/>
+            <Card header={product} price={10} source="craigslist" location="San Jose" link="http://google.com"/>
         </div>
     );
 }
