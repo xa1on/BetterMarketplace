@@ -2,6 +2,7 @@ import Image from "next/image";
 import redditLogo from "../ui/images/reddit_logo.png";
 import ebayLogo from "../ui/images/ebay_logo.png";
 import craigslistLogo from "../ui/images/craigslist_logo.png";
+import marketplaceLogo from "../ui/images/marketplace_logo.svg";
 
 
 export default function Card(props) {
@@ -9,11 +10,13 @@ export default function Card(props) {
     function getImage(source) {
         switch (source) {
             case "reddit": 
-                return redditLogo
+                return redditLogo;
             case "ebay": 
-                return ebayLogo
+                return ebayLogo;
             case "craigslist": 
-                return craigslistLogo
+                return craigslistLogo;
+            case "marketplace":
+                return marketplaceLogo;
         }
     }
 
@@ -21,10 +24,12 @@ export default function Card(props) {
     
     <a href={props.link}>
     
-        <div className="flex font-sans bg-violet-100 w-80 shadow-lg rounded-lg">
+        <div className="flex flex-row font-sans bg-green-200 w-260 shadow-lg rounded-lg p-5 m-4">
+            
+            <Image src={getImage(props.source)} alt="" className="" width={200}/>
             
             <div>
-                <div className="flex-none w-20 relative p-1">
+                <div className="flex-none relative p-5">
                     <Image src={getImage(props.source)} alt="" className="inset-0 object-cover" width={40}/>
                     <h1 className="flex-auto text-2xl font-semibold text-slate-900">
                         {props.header}
@@ -39,7 +44,7 @@ export default function Card(props) {
                 
             </div>
             
-            <Image src={getImage(props.source)} alt="" className="inset-0 object-cover" width={200}/>
+            
             
         </div>
     </a>
