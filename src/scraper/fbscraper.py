@@ -22,13 +22,13 @@ class fbscraper():
 
         self.conn = psycopg2.connect(host = "localhost", dbname = "postgres", port = 5432, password = sqlpass, user = "postgres") # also fix this database, this is eugenes on his local computer
         self.cur = self.conn.cursor()
-        self.db = "cars"
+        self.db = "items"
 
     def close_button(self): # helper function for closing fb buttons
         try:
             close_button = self.browser.find_element(By.XPATH, '//div[@aria-label="Close" and @role="button"]')
             close_button.click()
-            print("Close button clicked!")
+            # print("Close button clicked!")
             
         except:
             print("Could not find or click the close button!")
@@ -65,64 +65,48 @@ class fbscraper():
         valid_links = [link for link in links if product.lower() in link.text.lower()]
 
         id_pattern = r"(\d+)"
+
+        found_new = []
+
         for valid_link in valid_links:
             url = valid_link.get('href')
             id = re.findall(id_pattern, url)[0]
-            print(self.check_id(id))
             if not self.check_id(id):
                 text = '\n'.join(valid_link.stripped_strings)
                 d = ({'text': text, 'url': url})
-                self.process_data(id, d)
+                self.pre_process(id, d)
+                found_new.append((id, d))
+        for new in found_new:
+            self.update_data(new[0], new[1])
 
 
 
-    def process_data(self, id, d): #given a data dict ({"text": (price\ntitle\nlocation\nmilage), "url": (link)}) scrape the item's page for more info
-        split_input_text = re.split(r'\n', d["text"])[:-1] # we remove the first index because cars milage is last item, but we want to use more accurate milage??
-        # maybe we don't do this because its harder to do both regular items and cars, so don't get the more accurate milage from the page
+    def pre_process(self, id, d):
+        output = re.split(r'\n', d["text"])
+        if output[1][0] == "$": # sometimes a second price shows up if its "on sale" this price isn't really important so it gets removed
+            output.pop(1)
+        output = output[:3] # only need the first 3, price, title, and location
+        output[0] = self.price_to_int(output[0])
+        self.store_data([id] + output + ["null", "null", "null"])
 
-        split_input_text[0] = self.price_to_int(split_input_text[0]) #takes first value and converts it to integer. check if this works for normal marketplace items
-
-        print(split_input_text)
-
-        if split_input_text[1][0] == "$":
-            split_input_text.pop(1)
-
+    def update_data(self, id, d): #given a data dict ({"text": (price\ntitle\nlocation\nmilage), "url": (link)}) scrape the item's page for more info
         new_url = d["url"]
-        self.browser.get(f"https://facebook.com{new_url}")
+        link = f"https://facebook.com{new_url}"
+        self.browser.get(link)
 
         self.close_button()
         self.browser.execute_script("window.scrollTo(0, document.body.scrollHeight / 8);") # scrolls the page a bit to press the See more button
         self.see_more()
 
-
         html = self.browser.page_source
 
         soup = BeautifulSoup(html, 'html.parser')
 
-        data = soup.get_text()
-        data = ' '.join(data.splitlines())
-
-        #all of these regex patterns are specific to the case of cars, we need to write different patterns for cars/regular items
-        # we can apply these patterns to any text description of page, so maybe make 2 main sets of patterns, cars/not cars
-        miles_pattern = r"Driven ([\d,]+).+miles" 
-        transmission_pattern = r"([A-Z][a-z]+) transmission"
-        color_pattern = r"color: ([a-zA-Z]+)"
-        location_pattern = r"Location(\S+)[, ]"
-        location = re.findall(location_pattern, data)[0]
-        description_pattern = rf"Seller's description(.+){location}[, ]" # we use the location here to find an end for the description
-        patterns = [miles_pattern, transmission_pattern, color_pattern, description_pattern]
-        find = None
-        for p in patterns:
-            find = re.findall(p, data)
-            split_input_text.append(find[0] if len(find) > 0 else None) # only get the first result from re.findall
-        print(split_input_text)
+        data = soup.get_text(separator="\n")
         
-        split_input_text[3] = self.price_to_int(split_input_text[3]) #this value is assumed to be miles, so we convert to integer
+        print(data)
 
-        data_to_store = tuple([id] + split_input_text)
-        self.store_data(data_to_store)
-
-    def check_id(self, id, table_name = "cars", column_name = "id"): # table name hardcoded, probably change
+    def check_id(self, id, table_name = "items", column_name = "id"): # table name hardcoded, probably change
         try:
             self.cur.execute(f"SELECT EXISTS(SELECT 1 FROM {table_name} WHERE {column_name} = CAST({id} AS varchar) LIMIT 1)")
             
@@ -134,13 +118,13 @@ class fbscraper():
             print(f"Error: {e}")
             return False
     
-    def store_data(self, data, table_name="cars"): # also use case specific, tables of different objects will have different columns
+    def store_data(self, data, table_name="items"): # also use case specific, tables of different objects will have different columns
         print(data)
         try:
             # Use parameterized query to avoid SQL injection and handle special characters
             self.cur.execute(f"""
-                INSERT INTO {table_name} (id, price, title, location, miles, transmission, color, description) 
-                VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
+                INSERT INTO {table_name} (id, price, title, location, description, link, image) 
+                VALUES (%s, %s, %s, %s, %s, %s, %s)
             """, data)
 
         except Exception as e:
@@ -166,6 +150,6 @@ if __name__ == "__main__":
     scraper = fbscraper()
     scraper.search("brz", "sanjose") # searches for brz's within san jose and commits to DB
 
-# comments from eugene: this is extremely hard coded for cars on fb marketplace
+# comments from eugene: this is extremely hard coded for items on fb marketplace
 # need to add images, you can probably pull the image links from the facebook data so we don't need to store images in the storage
 # also look into singlestore so we don't have to deal with this garbage
