@@ -1,3 +1,12 @@
 [submodule "src/scraper/YARS"]
 	path = src/scraper/YARS
 	url = https://github.com/datavorous/yars.git
+[submodule "src/scraper/scraping-ebay"]
+	path = src/scraper/scraping-ebay
+	url = https://github.com/cpatrickalves/scraping-ebay.git
+[submodule "src/scraper/ebayScraper"]
+	path = src/scraper/ebayScraper
+	url = https://github.com/rizmulya/ebayScraper.git
+[submodule "src/scraper/--force"]
+	path = src/scraper/--force
+	url = https://github.com/rizmulya/ebayScraper.git
