@@ -1,0 +1,3 @@
+[submodule "src/scraper/YARS"]
+	path = src/scraper/YARS
+	url = https://github.com/datavorous/yars.git
