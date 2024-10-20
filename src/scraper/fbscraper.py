@@ -82,6 +82,11 @@ class fbscraper():
 
         split_input_text[0] = self.price_to_int(split_input_text[0]) #takes first value and converts it to integer. check if this works for normal marketplace items
 
+        print(split_input_text)
+
+        if split_input_text[1][0] == "$":
+            split_input_text.pop(1)
+
         new_url = d["url"]
         self.browser.get(f"https://facebook.com{new_url}")
 
@@ -106,9 +111,11 @@ class fbscraper():
         location = re.findall(location_pattern, data)[0]
         description_pattern = rf"Seller's description(.+){location}[, ]" # we use the location here to find an end for the description
         patterns = [miles_pattern, transmission_pattern, color_pattern, description_pattern]
-        
+        find = None
         for p in patterns:
-            split_input_text.append(re.findall(p, data)[0]) # only get the first result from re.findall
+            find = re.findall(p, data)
+            split_input_text.append(find[0] if len(find) > 0 else None) # only get the first result from re.findall
+        print(split_input_text)
         
         split_input_text[3] = self.price_to_int(split_input_text[3]) #this value is assumed to be miles, so we convert to integer
 
