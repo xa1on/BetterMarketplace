@@ -17,7 +17,7 @@ class fbscraper():
 
     def __init__(self): # creates browser object for scraping, as well as connecting to db
         chrome_options = Options()
-        chrome_options.add_argument("--headless")
+        #chrome_options.add_argument("--headless")
         self.browser = webdriver.Chrome(options = chrome_options)
 
         self.conn = psycopg2.connect(host = "localhost", dbname = "postgres", port = 5432, password = sqlpass, user = "postgres") # also fix this database, this is eugenes on his local computer
@@ -60,39 +60,34 @@ class fbscraper():
         # Use BeautifulSoup to parse the HTML
         soup = BeautifulSoup(html, 'html.parser')
 
-
-        links = soup.find_all('a')
-        valid_links = [link for link in links if product.lower() in link.text.lower()]
-
         id_pattern = r"(\d+)"
 
         found_new = []
+        listings = soup.find_all('div', class_='x9f619 x78zum5 x1r8uery xdt5ytf x1iyjqo2 xs83m0k x1e558r4 x150jy0e x1iorvi4 xjkvuk6 xnpuxes x291uyu x1uepa24')
+        for listing in listings:
+            try:
+                url = 'https://www.facebook.com/' + listing.find('a', class_='x1i10hfl xjbqb8w x1ejq31n xd10rxx x1sy0etr x17r0tee x972fbf xcfux6l x1qhh985 xm0m39n x9f619 x1ypdohk xt0psk2 xe8uvvx xdj266r x11i5rnm xat24cr x1mh8g0r xexx8yu x4uap5 x18d9i69 xkhd6sd x16tdsg8 x1hl2dhg xggy1nq x1a2a7pz x1heor9g x1sur9pj xkrqix3 x1lku1pv')['href']
+                id = re.findall(id_pattern, url)[0]
+                if not self.check_id(id):
+                    self.pre_process(id, listing, url)
+                    found_new.append((id, url))
+            except:
+                pass
+        for listing in found_new:
+            self.update_process(listing[0], listing[1])
 
-        for valid_link in valid_links:
-            url = valid_link.get('href')
-            id = re.findall(id_pattern, url)[0]
-            if not self.check_id(id):
-                text = '\n'.join(valid_link.stripped_strings)
-                d = ({'text': text, 'url': url})
-                self.pre_process(id, d)
-                found_new.append((id, d))
-        for new in found_new:
-            self.update_data(new[0], new[1])
 
 
+    def pre_process(self, id, d, url):
+        price = self.price_to_int(d.find('span', 'x193iq5w xeuugli x13faqbe x1vvkbs x1xmvt09 x1lliihq x1s928wv xhkezso x1gmr53x x1cpjm7i x1fgarty x1943h6x xudqn12 x676frb x1lkfr7t x1lbecb7 x1s688f xzsf02u').text)
+        title = d.find('span', 'x1lliihq x6ikm8r x10wlt62 x1n2onr6').text
+        location = d.find('span', 'x1lliihq x6ikm8r x10wlt62 x1n2onr6 xlyipyv xuxw1ft x1j85h84').text
+        link = url
+        image = d.find('img', class_='xt7dq6l xl1xv1r x6ikm8r x10wlt62 xh8yej3')['src']
+        self.store_data([id, price, title, location, link, image, "null"])
 
-    def pre_process(self, id, d):
-        output = re.split(r'\n', d["text"])
-        if output[1][0] == "$": # sometimes a second price shows up if its "on sale" this price isn't really important so it gets removed
-            output.pop(1)
-        output = output[:3] # only need the first 3, price, title, and location
-        output[0] = self.price_to_int(output[0])
-        self.store_data([id] + output + ["null", "null", "null"])
-
-    def update_data(self, id, d): #given a data dict ({"text": (price\ntitle\nlocation\nmilage), "url": (link)}) scrape the item's page for more info
-        new_url = d["url"]
-        link = f"https://facebook.com{new_url}"
-        self.browser.get(link)
+    def update_process(self, id, url): #given a data dict ({"text": (price\ntitle\nlocation\nmilage), "url": (link)}) scrape the item's page for more info
+        self.browser.get(url)
 
         self.close_button()
         self.browser.execute_script("window.scrollTo(0, document.body.scrollHeight / 8);") # scrolls the page a bit to press the See more button
@@ -101,10 +96,9 @@ class fbscraper():
         html = self.browser.page_source
 
         soup = BeautifulSoup(html, 'html.parser')
+        description = soup.find('div', class_='xz9dl7a x4uap5 xsag5q8 xkhd6sd x126k92a').find('span', 'x193iq5w xeuugli x13faqbe x1vvkbs x1xmvt09 x1lliihq x1s928wv xhkezso x1gmr53x x1cpjm7i x1fgarty x1943h6x xudqn12 x3x7a5m x6prxxf xvq8zen xo1l8bm xzsf02u').text.replace(" See less", "")
+        self.update_desc(id, description)
 
-        data = soup.get_text(separator="\n")
-        
-        print(data)
 
     def check_id(self, id, table_name = "items", column_name = "id"): # table name hardcoded, probably change
         try:
@@ -123,7 +117,7 @@ class fbscraper():
         try:
             # Use parameterized query to avoid SQL injection and handle special characters
             self.cur.execute(f"""
-                INSERT INTO {table_name} (id, price, title, location, description, link, image) 
+                INSERT INTO {table_name} (id, price, title, location, link, image, description) 
                 VALUES (%s, %s, %s, %s, %s, %s, %s)
             """, data)
 
@@ -132,6 +126,15 @@ class fbscraper():
             return False
 
         # Commit the transaction
+        self.conn.commit()
+    
+    def update_desc(self, id, description):
+        print(description)
+        self.cur.execute(f"""
+            UPDATE items
+            SET description = %s
+            WHERE id = %s
+        """, [description] + [id])
         self.conn.commit()
 
         
