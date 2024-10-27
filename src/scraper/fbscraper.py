@@ -11,7 +11,7 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
-sqlpass = environ["sqlpass"]
+sqlpass = environ["sqlpass"] 
 
 class fbscraper():
 
