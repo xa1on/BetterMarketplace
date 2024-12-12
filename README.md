@@ -1,3 +1,3 @@
 ## BetterMarketplace
 
-Scrapped Marketplace aggregator w/ webscrapping for facebook, craigslist, and ebay
+Scrapped Marketplace aggregator w/ postgres & webscrapping for facebook, craigslist, and ebay
